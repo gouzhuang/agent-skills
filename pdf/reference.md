@@ -330,14 +330,14 @@ qpdf --show-all-pages input.pdf > structure.txt
 
 #### Advanced Encryption
 ```bash
-# Add password protection with specific permissions
-qpdf --encrypt user_pass owner_pass 256 --print=none --modify=none -- input.pdf encrypted.pdf
+# Add password protection with specific permissions (use environment variables for passwords)
+qpdf --encrypt "$USER_PASS" "$OWNER_PASS" 256 --print=none --modify=none -- input.pdf encrypted.pdf
 
 # Check encryption status
 qpdf --show-encryption encrypted.pdf
 
-# Remove password protection (requires password)
-qpdf --password=secret123 --decrypt encrypted.pdf decrypted.pdf
+# Remove password protection (requires password from environment variable)
+qpdf --password="$PDF_PASSWORD" --decrypt encrypted.pdf decrypted.pdf
 ```
 
 ## Advanced Python Techniques
@@ -568,13 +568,17 @@ def process_large_pdf(pdf_path, chunk_size=10):
 
 ### Encrypted PDFs
 ```python
-# Handle password-protected PDFs
+# Handle password-protected PDFs securely using environment variables
+import os
 from pypdf import PdfReader
 
 try:
     reader = PdfReader("encrypted.pdf")
     if reader.is_encrypted:
-        reader.decrypt("password")
+        password = os.environ.get('PDF_PASSWORD')
+        if not password:
+            raise ValueError("PDF_PASSWORD environment variable not set")
+        reader.decrypt(password)
 except Exception as e:
     print(f"Failed to decrypt: {e}")
 ```

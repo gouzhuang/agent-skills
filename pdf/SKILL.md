@@ -212,8 +212,8 @@ qpdf input.pdf --pages . 6-10 -- pages6-10.pdf
 # Rotate pages
 qpdf input.pdf output.pdf --rotate=+90:1  # Rotate page 1 by 90 degrees
 
-# Remove password
-qpdf --password=mypassword --decrypt encrypted.pdf decrypted.pdf
+# Remove password (use environment variable for security)
+qpdf --password="$PDF_PASSWORD" --decrypt encrypted.pdf decrypted.pdf
 ```
 
 ### pdftk (if available)
@@ -322,7 +322,15 @@ pdfimages -j input.pdf output_prefix
 
 ### Password Protection
 ```python
+import os
 from pypdf import PdfReader, PdfWriter
+
+# Load passwords from environment variables for security
+USER_PASSWORD = os.environ.get('PDF_USER_PASSWORD')
+OWNER_PASSWORD = os.environ.get('PDF_OWNER_PASSWORD')
+
+if not USER_PASSWORD or not OWNER_PASSWORD:
+    raise ValueError("PDF_USER_PASSWORD and PDF_OWNER_PASSWORD environment variables must be set")
 
 reader = PdfReader("input.pdf")
 writer = PdfWriter()
@@ -330,8 +338,8 @@ writer = PdfWriter()
 for page in reader.pages:
     writer.add_page(page)
 
-# Add password
-writer.encrypt("userpassword", "ownerpassword")
+# Add password protection
+writer.encrypt(USER_PASSWORD, OWNER_PASSWORD)
 
 with open("encrypted.pdf", "wb") as output:
     writer.write(output)
