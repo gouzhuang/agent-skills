@@ -1,6 +1,6 @@
 ---
 name: pdf
-description: Use this skill whenever the user wants to do anything with PDF files. This includes reading or extracting text/tables from PDFs, combining or merging multiple PDFs into one, splitting PDFs apart, rotating pages, adding watermarks, creating new PDFs, filling PDF forms, encrypting/decrypting PDFs, extracting images, and OCR on scanned PDFs to make them searchable. If the user mentions a .pdf file or asks to produce one, use this skill.
+description: Use this skill whenever the user wants to do anything with PDF files. This includes reading or extracting text/tables from PDFs, combining or merging multiple PDFs into one, splitting PDFs apart, rotating pages, adding watermarks, creating new PDFs, filling PDF forms, encrypting/decrypting PDFs, extracting images, cleaning background noise from scanned PDFs, and OCR on scanned PDFs to make them searchable. If the user mentions a .pdf file or asks to produce one, use this skill.
 license: Proprietary. LICENSE.txt has complete terms
 ---
 
@@ -274,6 +274,39 @@ gs -sDEVICE=pdfwrite -dPDFSETTINGS=/default -dDownsampleColorImages=false -dDown
 
 ## Common Tasks
 
+### Clean Background Noise from Scanned PDFs
+
+Use `scripts/clean_pdf_background.py` to remove background noise and shadows from scanned PDFs while preserving color content (photos, stamps) and text clarity.
+
+```bash
+python scripts/clean_pdf_background.py input.pdf output.pdf [dpi]
+```
+
+**Parameters:**
+- `input.pdf`: Source PDF with background noise
+- `output.pdf`: Cleaned output PDF
+- `dpi`: Resolution for processing (default: 300, use 600 for higher quality)
+
+**Processing method:**
+- Analyzes each page's background brightness (95th and 98th percentiles)
+- Skips pages with clean white backgrounds (>250 and >253 brightness)
+- Applies level adjustment (0%-92%) and white threshold (92%) to remove noise
+- Preserves color content including photos, stamps, and handwriting
+
+**Example:**
+```bash
+# Standard quality cleaning
+python scripts/clean_pdf_background.py scanned.pdf clean.pdf
+
+# High quality cleaning
+python scripts/clean_pdf_background.py scanned.pdf clean.pdf 600
+```
+
+**Requirements:**
+- ImageMagick (`convert`)
+- poppler-utils (`pdftoppm`)
+- Python: `Pillow`, `numpy`
+
 ### Extract Text from Scanned PDFs
 ```python
 # Requires: pip install pytesseract pdf2image
@@ -357,6 +390,7 @@ with open("encrypted.pdf", "wb") as output:
 | Command line merge | qpdf | `qpdf --empty --pages ...` |
 | OCR scanned PDFs | pytesseract | Convert to image first |
 | Compress PDF | Ghostscript | `gs -sDEVICE=pdfwrite -dPDFSETTINGS=/ebook` |
+| Clean background noise | scripts/clean_pdf_background.py | `python scripts/clean_pdf_background.py input.pdf output.pdf` |
 | Fill PDF forms | pdf-lib or pypdf (see FORMS.md) | See FORMS.md |
 
 ## Next Steps
