@@ -34,6 +34,8 @@ Complete guide for PDF operations including:
 - PDF compression and optimization
 - Adding watermarks and encryption
 
+This skill is developed based on the PDF skill from [Anthropic's skills repository](https://github.com/anthropics/skills).
+
 **Helper Scripts:**
 - `fill_pdf_form_with_annotations.py` - Fill PDF forms with text annotations
 - `convert_pdf_to_images.py` - Convert PDF pages to PNG images
@@ -43,6 +45,7 @@ Complete guide for PDF operations including:
 - `fill_fillable_fields.py` - Fill native PDF form fields
 - `create_validation_image.py` - Create validation images for form fields
 - `check_bounding_boxes.py` - Validate bounding box coordinates
+- `clean_pdf_background.py` - Clean background noise from scanned PDFs
 
 ### Update Changelog (`skills/update-changelog/`)
 
