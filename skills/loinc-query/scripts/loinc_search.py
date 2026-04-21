@@ -56,19 +56,6 @@ def _load_credentials() -> tuple[str, str]:
         "environment variables LOINC_USERNAME / LOINC_PASSWORD."
     )
 
-
-def _normalize_response(data: dict[str, Any]) -> dict[str, Any]:
-    normalized: dict[str, Any] = {}
-    for key, value in data.items():
-        if key == "Results":
-            normalized["results"] = value
-        else:
-            normalized[key.lower()] = value
-    if "results" not in normalized:
-        normalized["results"] = []
-    return normalized
-
-
 async def _make_request(
     client: httpx.AsyncClient, endpoint: str, params: dict[str, Any]
 ) -> dict[str, Any]:
@@ -105,7 +92,7 @@ async def _make_request(
     except Exception:
         raise LoincApiError("Invalid JSON response from LOINC API.")
 
-    return _normalize_response(data)
+    return data
 
 
 async def search(
