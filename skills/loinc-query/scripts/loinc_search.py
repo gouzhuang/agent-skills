@@ -393,12 +393,6 @@ def _build_parser() -> argparse.ArgumentParser:
         default="json",
         help="Output format (default: json)",
     )
-    parser.add_argument(
-        "--endpoint",
-        "-e",
-        choices=ENDPOINTS,
-        help="API endpoint to search (overrides command)",
-    )
     return parser
 
 
@@ -456,7 +450,7 @@ def main() -> int:
                 endpoint="loincs",
             ), args.output)
         else:
-            ep = args.endpoint or endpoint_map.get(args.command, "loincs")
+            ep = endpoint_map[args.command]
             result = _run_async(
                 search(
                     args.query,
