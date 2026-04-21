@@ -5,7 +5,7 @@ description: Query the LOINC medical terminology database via the Regenstrief Se
 
 # LOINC 查询
 
-通过 Regenstrief Search API 查询 LOINC 医学术语数据库。
+通过 Regenstrief Search API 查询 LOINC 医学术语数据库。输出原始 API 响应（Pretty JSON）。
 
 ## 快速开始
 
@@ -16,10 +16,10 @@ description: Query the LOINC medical terminology database via the Regenstrief Se
 python scripts/loinc_search.py search "glucose"
 
 # 限定字段搜索
-python scripts/loinc_search.py search "Component:glucose System:blood"
+python scripts/loinc_search.py search "Component:glucose System:Ser/Plas"
 
 # 搜索 Parts
-python scripts/loinc_search.py parts "giemsa"
+python scripts/loinc_search.py parts 'Ser/Plas PartTypeName:SYSTEM Status:ACTIVE'
 
 # 查看特定代码详情
 python scripts/loinc_search.py details "2339-0"
@@ -27,11 +27,8 @@ python scripts/loinc_search.py details "2339-0"
 # 同时搜索所有端点
 python scripts/loinc_search.py all "platelet"
 
-# CSV 输出
-python scripts/loinc_search.py search "glucose" -o csv -n 10
-
-# JSONL 输出（每行一个结果）
-python scripts/loinc_search.py search "glucose" -o jsonl -n 10
+# 限制结果数量
+python scripts/loinc_search.py search "glucose" -n 10
 ```
 
 ## 认证
@@ -61,7 +58,7 @@ python scripts/loinc_search.py search "glucose" -o jsonl -n 10
 使用 `字段名:值` 将搜索限定到特定字段：
 
 ```
-Component:glucose System:blood
+Component:glucose System:Bld
 Component:(opiates confirm)        # Component 中同时包含两个词
 Component:(opiates OR confirm)     # Component 中包含任一
 ```
@@ -136,68 +133,7 @@ glucose Class:CHEM
 
 ## 输出格式
 
-### 详细程度
-
-使用 `--detail` / `-d` 选项控制返回字段的详细程度，支持 3 个级别（递增）：
-
-| 级别 | 选项 | 包含字段 |
-|------|------|----------|
-| **简要** | `-d brief` | `loinc_num`, `component`, `long_common_name`, `status` |
-| **适中** | `-d moderate`（默认） | 简要 + `property`, `time_aspect`, `system`, `scale_type`, `method_type`, `class_name`, `order_obs`, `example_units`, `shortname`, `link` |
-| **详细** | `-d detailed` | 全部字段 |
-
-```bash
-# 简要（仅核心标识信息）
-python scripts/loinc_search.py search "glucose" -d brief -n 5
-
-# 适中（默认，包含临床常用字段）
-python scripts/loinc_search.py search "glucose" -n 5
-
-# 详细（返回 API 所有字段）
-python scripts/loinc_search.py search "glucose" -d detailed -n 5
-```
-
-### json（默认）
-
-```json
-{
-  "query": "glucose",
-  "endpoint": "loincs",
-  "total_count": 150,
-  "offset": 0,
-  "rows": 20,
-  "has_more": true,
-  "results": [
-    {
-      "loinc_num": "2339-0",
-      "component": "Glucose",
-      "property": "MCnc",
-      "time_aspect": "Pt",
-      "system": "Bld",
-      "scale_type": "Qn",
-      "class_name": "CHEM",
-      "status": "ACTIVE",
-      "long_common_name": "Glucose [Mass/volume] in Blood",
-      "shortname": "Glucose Bld-mCnc",
-      "example_units": "mg/dL",
-      "link": "https://loinc.org/2339-0"
-    }
-  ]
-}
-```
-
-### jsonl
-
-每行一个 JSON 对象，适合流式处理：
-
-```json
-{"loinc_num": "2339-0", "component": "Glucose", ...}
-{"loinc_num": "2345-7", "component": "Glucose", ...}
-```
-
-### csv
-
-自动收集所有结果中的字段作为表头，缺失字段留空。
+直接输出 API 原始响应（Pretty JSON），保留 API 原始字段名。
 
 ## 错误处理
 
@@ -220,5 +156,3 @@ python scripts/loinc_search.py search "glucose" -d detailed -n 5
 python scripts/loinc_search.py search "glucose" -n 20 --offset 0
 python scripts/loinc_search.py search "glucose" -n 20 --offset 20
 ```
-
-JSON 输出中的 `has_more` 字段指示是否还有更多结果。
