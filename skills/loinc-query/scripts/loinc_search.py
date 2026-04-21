@@ -364,6 +364,15 @@ def _build_parser() -> argparse.ArgumentParser:
         "Outputs JSON/JSONL/CSV to stdout.",
     )
     parser.add_argument(
+        "command",
+        choices=["search", "parts", "answers", "groups", "details", "all"],
+        help="Command to execute",
+    )
+    parser.add_argument(
+        "query",
+        help="Search query or LOINC code (quote if contains spaces)",
+    )
+    parser.add_argument(
         "--rows",
         "-n",
         type=int,
@@ -390,27 +399,6 @@ def _build_parser() -> argparse.ArgumentParser:
         choices=ENDPOINTS,
         help="API endpoint to search (overrides command)",
     )
-
-    sub = parser.add_subparsers(dest="command", help="Search commands")
-
-    search_cmd = sub.add_parser("search", help="Search LOINC terms")
-    search_cmd.add_argument("query", help="Search query string")
-
-    parts_cmd = sub.add_parser("parts", help="Search LOINC parts")
-    parts_cmd.add_argument("query", help="Search query string")
-
-    answers_cmd = sub.add_parser("answers", help="Search answer lists")
-    answers_cmd.add_argument("query", help="Search query string")
-
-    groups_cmd = sub.add_parser("groups", help="Search LOINC groups")
-    groups_cmd.add_argument("query", help="Search query string")
-
-    details_cmd = sub.add_parser("details", help="View details for a LOINC code")
-    details_cmd.add_argument("code", help="LOINC code (e.g. 2339-0)")
-
-    all_cmd = sub.add_parser("all", help="Search all endpoints at once")
-    all_cmd.add_argument("query", help="Search query string")
-
     return parser
 
 
@@ -421,10 +409,6 @@ def _run_async(coro):
 def main() -> int:
     parser = _build_parser()
     args = parser.parse_args()
-
-    if not args.command:
-        parser.print_help()
-        return 2
 
     endpoint_map: dict[str, EndpointType] = {
         "search": "loincs",
@@ -453,7 +437,7 @@ def main() -> int:
         elif args.command == "details":
             result = _run_async(
                 search(
-                    args.code,
+                    args.query,
                     endpoint="loincs",
                     rows=1,
                     offset=0,
@@ -461,14 +445,14 @@ def main() -> int:
                 )
             )
             if not result.results:
-                _error_json(f"No results found for code '{args.code}'.")
+                _error_json(f"No results found for code '{args.query}'.")
                 return 1
             _display(SearchResult(
                 results=result.results,
                 total_count=result.total_count,
                 offset=result.offset,
                 rows=result.rows,
-                query=args.code,
+                query=args.query,
                 endpoint="loincs",
             ), args.output)
         else:
