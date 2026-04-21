@@ -136,6 +136,27 @@ glucose Class:CHEM
 
 ## 输出格式
 
+### 详细程度
+
+使用 `--detail` / `-d` 选项控制返回字段的详细程度，支持 3 个级别（递增）：
+
+| 级别 | 选项 | 包含字段 |
+|------|------|----------|
+| **简要** | `-d brief` | `loinc_num`, `component`, `long_common_name`, `status` |
+| **适中** | `-d moderate`（默认） | 简要 + `property`, `time_aspect`, `system`, `scale_type`, `method_type`, `class_name`, `order_obs`, `example_units`, `shortname`, `link` |
+| **详细** | `-d detailed` | 全部字段 |
+
+```bash
+# 简要（仅核心标识信息）
+python scripts/loinc_search.py search "glucose" -d brief -n 5
+
+# 适中（默认，包含临床常用字段）
+python scripts/loinc_search.py search "glucose" -n 5
+
+# 详细（返回 API 所有字段）
+python scripts/loinc_search.py search "glucose" -d detailed -n 5
+```
+
 ### json（默认）
 
 ```json
@@ -151,12 +172,15 @@ glucose Class:CHEM
       "loinc_num": "2339-0",
       "component": "Glucose",
       "property": "MCnc",
+      "time_aspect": "Pt",
       "system": "Bld",
       "scale_type": "Qn",
       "class_name": "CHEM",
       "status": "ACTIVE",
       "long_common_name": "Glucose [Mass/volume] in Blood",
-      ...
+      "shortname": "Glucose Bld-mCnc",
+      "example_units": "mg/dL",
+      "link": "https://loinc.org/2339-0"
     }
   ]
 }

@@ -23,7 +23,7 @@ BASE_URL = "https://loinc.regenstrief.org/searchapi"
 ENDPOINTS: tuple[EndpointType, ...] = ("loincs", "parts", "answerlists", "groups")
 EndpointType = Literal["loincs", "parts", "answerlists", "groups"]
 
-# Field mapping from API uppercase keys to Python snake_case
+# Field mapping from API keys to Python snake_case
 _FIELD_MAP: dict[str, str] = {
     "LOINC_NUM": "loinc_num",
     "COMPONENT": "component",
@@ -43,22 +43,35 @@ _FIELD_MAP: dict[str, str] = {
     "RELATEDNAMES2": "related_names",
     "COMMON_TEST_RANK": "common_test_rank",
     "COMMON_ORDER_RANK": "common_order_rank",
+    "COMMON_SI_TEST_RANK": "common_si_test_rank",
     "DefinitionDescription": "definition_description",
     "VersionFirstReleased": "version_first_released",
     "VersionLastChanged": "version_last_changed",
     "CHNG_TYPE": "change_type",
-    "StatusText": "status_text",
+    "STATUS_TEXT": "status_text",
+    "STATUS_REASON": "status_reason",
+    "CHANGE_REASON_PUBLIC": "change_reason_public",
     "CONSUMER_NAME": "consumer_name",
     "CLASSTYPE": "classtype",
     "FORMULA": "formula",
-    "EXMPL_ANSWERS": "example_answers",
+    "ExampleAnswers": "example_answers",
     "SURVEY_QUEST_TEXT": "survey_quest_text",
     "SURVEY_QUEST_SRC": "survey_quest_src",
     "UNITSREQUIRED": "units_required",
     "HL7_FIELD_SUBFIELD_ID": "hl7_field_subfield_id",
+    "HL7_ATTACHMENT_STRUCTURE": "hl7_attachment_structure",
     "EXTERNAL_COPYRIGHT_NOTICE": "external_copyright_notice",
+    "EXTERNAL_COPYRIGHT_LINK": "external_copyright_link",
     "PanelType": "panel_type",
+    "DisplayName": "display_name",
+    "FormalName": "formal_name",
+    "Link": "link",
     "AnswerList": "answer_list",
+    "AskAtOrderEntry": "ask_at_order_entry",
+    "AssociatedObservations": "associated_observations",
+    "ValidHL7AttachmentRequest": "valid_hl7_attachment_request",
+    "LHCForms": "lhc_forms",
+    "LinguisticVariantDisplayName": "linguistic_variant_display_name",
     "PartNumber": "part_number",
     "PartTypeName": "part_type_name",
     "PartName": "part_name",
@@ -71,7 +84,22 @@ _FIELD_MAP: dict[str, str] = {
     "AnswerString": "answer_string",
     "AnswerLOINCCode": "answer_loinc_code",
     "Sequence": "sequence",
+    "TermDescriptions": "term_descriptions",
+    "CodeSystems": "code_systems",
+    "Tags": "tags",
 }
+
+# Complex fields that should preserve original structure (not str-converted)
+_COMPLEX_FIELDS = frozenset({"term_descriptions", "code_systems", "tags"})
+
+# Detail level field sets
+_BRIEF_FIELDS = frozenset({
+    "loinc_num", "component", "long_common_name", "status",
+})
+_MODERATE_FIELDS = _BRIEF_FIELDS | frozenset({
+    "property", "time_aspect", "system", "scale_type", "method_type",
+    "class_name", "order_obs", "example_units", "shortname", "link",
+})
 
 
 @dataclass
@@ -96,11 +124,14 @@ class LoincTerm:
     related_names: str = ""
     common_test_rank: str = ""
     common_order_rank: str = ""
+    common_si_test_rank: str = ""
     definition_description: str = ""
     version_first_released: str = ""
     version_last_changed: str = ""
     change_type: str = ""
     status_text: str = ""
+    status_reason: str = ""
+    change_reason_public: str = ""
     consumer_name: str = ""
     classtype: str = ""
     formula: str = ""
@@ -109,14 +140,27 @@ class LoincTerm:
     survey_quest_src: str = ""
     units_required: str = ""
     hl7_field_subfield_id: str = ""
+    hl7_attachment_structure: str = ""
     external_copyright_notice: str = ""
+    external_copyright_link: str = ""
     panel_type: str = ""
+    display_name: str = ""
+    formal_name: str = ""
+    link: str = ""
     answer_list: str = ""
+    ask_at_order_entry: str = ""
+    associated_observations: str = ""
+    valid_hl7_attachment_request: str = ""
+    lhc_forms: str = ""
+    linguistic_variant_display_name: str = ""
+    term_descriptions: list = field(default_factory=list)
+    code_systems: list = field(default_factory=list)
+    tags: list = field(default_factory=list)
     extra: dict[str, str] = field(default_factory=dict)
 
     @classmethod
     def from_api(cls, data: dict[str, Any]) -> LoincTerm:
-        mapped: dict[str, str] = {}
+        mapped: dict[str, Any] = {}
         extra: dict[str, str] = {}
         known = cls.__dataclass_fields__
         for key, value in data.items():
@@ -124,20 +168,31 @@ class LoincTerm:
                 value = ""
             py_key = _FIELD_MAP.get(key)
             if py_key and py_key in known:
-                mapped[py_key] = str(value)
+                if py_key in _COMPLEX_FIELDS:
+                    mapped[py_key] = value if isinstance(value, list) else []
+                else:
+                    mapped[py_key] = str(value)
             else:
-                extra[key] = str(value)
+                extra[key] = str(value) if not isinstance(value, (list, dict)) else value
         return cls(**mapped, extra=extra)
 
-    def to_dict(self) -> dict[str, str]:
-        d: dict[str, str] = {}
+    def to_dict(self, detail: str = "moderate") -> dict[str, Any]:
+        if detail == "detailed":
+            fields = None
+        elif detail == "brief":
+            fields = _BRIEF_FIELDS
+        else:
+            fields = _MODERATE_FIELDS
+        d: dict[str, Any] = {}
         for f in self.__dataclass_fields__:
             if f == "extra":
                 continue
+            if fields is not None and f not in fields:
+                continue
             v = getattr(self, f)
-            if v:
+            if fields is None or v:
                 d[f] = v
-        if self.extra:
+        if fields is None and self.extra:
             d.update(self.extra)
         return d
 
@@ -303,7 +358,7 @@ async def search_all_endpoints(
     return output
 
 
-def _output_json(result: SearchResult) -> None:
+def _output_json(result: SearchResult, detail: str = "moderate") -> None:
     data = {
         "query": result.query,
         "endpoint": result.endpoint,
@@ -311,17 +366,17 @@ def _output_json(result: SearchResult) -> None:
         "offset": result.offset,
         "rows": result.rows,
         "has_more": result.has_more,
-        "results": [t.to_dict() for t in result.results],
+        "results": [t.to_dict(detail=detail) for t in result.results],
     }
     print(json.dumps(data, indent=2, ensure_ascii=False))
 
 
-def _output_jsonl(result: SearchResult) -> None:
+def _output_jsonl(result: SearchResult, detail: str = "moderate") -> None:
     for term in result.results:
-        print(json.dumps(term.to_dict(), ensure_ascii=False))
+        print(json.dumps(term.to_dict(detail=detail), ensure_ascii=False))
 
 
-def _output_csv(result: SearchResult) -> None:
+def _output_csv(result: SearchResult, detail: str = "moderate") -> None:
     if not result.results:
         return
     buf = io.StringIO()
@@ -330,24 +385,24 @@ def _output_csv(result: SearchResult) -> None:
     keys: list[str] = []
     seen: set[str] = set()
     for term in result.results:
-        for k in term.to_dict():
+        for k in term.to_dict(detail=detail):
             if k not in seen:
                 keys.append(k)
                 seen.add(k)
     writer.writerow(keys)
     for term in result.results:
-        d = term.to_dict()
+        d = term.to_dict(detail=detail)
         writer.writerow([d.get(k, "") for k in keys])
     sys.stdout.write(buf.getvalue())
 
 
-def _display(result: SearchResult, fmt: str) -> None:
+def _display(result: SearchResult, fmt: str, detail: str = "moderate") -> None:
     if fmt == "jsonl":
-        _output_jsonl(result)
+        _output_jsonl(result, detail=detail)
     elif fmt == "csv":
-        _output_csv(result)
+        _output_csv(result, detail=detail)
     else:
-        _output_json(result)
+        _output_json(result, detail=detail)
 
 
 def _error_json(message: str, status_code: int | None = None) -> None:
@@ -393,6 +448,13 @@ def _build_parser() -> argparse.ArgumentParser:
         default="json",
         help="Output format (default: json)",
     )
+    parser.add_argument(
+        "--detail",
+        "-d",
+        choices=["brief", "moderate", "detailed"],
+        default="moderate",
+        help="Detail level: brief (4 fields), moderate (14 fields), detailed (all) (default: moderate)",
+    )
     return parser
 
 
@@ -422,7 +484,7 @@ def main() -> int:
                         "offset": r.offset,
                         "rows": r.rows,
                         "has_more": r.has_more,
-                        "results": [t.to_dict() for t in r.results],
+                        "results": [t.to_dict(detail=args.detail) for t in r.results],
                     }
                     for ep, r in results.items()
                 },
@@ -448,7 +510,7 @@ def main() -> int:
                 rows=result.rows,
                 query=args.query,
                 endpoint="loincs",
-            ), args.output)
+            ), args.output, args.detail)
         else:
             ep = endpoint_map[args.command]
             result = _run_async(
@@ -460,7 +522,7 @@ def main() -> int:
                     sort=args.sort,
                 )
             )
-            _display(result, args.output)
+            _display(result, args.output, args.detail)
     except LoincApiError as e:
         _error_json(e.message, e.status_code)
         return 1
