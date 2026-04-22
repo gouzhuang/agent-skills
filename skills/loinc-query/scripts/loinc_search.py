@@ -251,7 +251,19 @@ def main() -> int:
             keep = DETAIL_FIELDS[ep][args.detail]
             result["Results"] = _filter_result_fields(result["Results"], keep)
 
-        print(json.dumps(result, indent=2, ensure_ascii=False))
+        summary = result.get("ResponseSummary", {})
+        output = {
+            "Summary": {
+                "Endpoint": ep,
+                "Query": args.query,
+                "TotalCount": summary.get("RecordsFound", 0),
+                "Offset": summary.get("StartingOffset", 0),
+                "Rows": summary.get("RowsReturned", 0),
+            },
+            "Results": result.get("Results", []),
+        }
+
+        print(json.dumps(output, indent=2, ensure_ascii=False))
     except LoincApiError as e:
         _error_json(e.message, e.status_code)
         return 1
