@@ -5,7 +5,7 @@ description: Query the LOINC medical terminology database via the Regenstrief Se
 
 # LOINC 查询
 
-通过 Regenstrief Search API 查询 LOINC 医学术语数据库。输出原始 API 响应（Pretty JSON）。
+通过 Regenstrief Search API 查询 LOINC 医学术语数据库。输出结构化 JSON（Summary + Results）。
 
 ## 快速开始
 
@@ -26,6 +26,10 @@ python scripts/loinc_search.py details "2339-0"
 
 # 限制结果数量
 python scripts/loinc_search.py search "glucose" -n 10
+
+# 控制输出详细程度
+python scripts/loinc_search.py search "glucose" -d brief
+python scripts/loinc_search.py details "2339-0" -d moderate
 ```
 
 ## 认证
@@ -129,7 +133,40 @@ glucose Class:CHEM
 
 ## 输出格式
 
-直接输出 API 原始响应（Pretty JSON），保留 API 原始字段名。
+输出为 Pretty JSON，包含两部分：
+
+- `Summary` — 查询摘要（端点、查询词、总记录数、偏移量、返回行数）
+- `Results` — 查询结果列表
+
+```json
+{
+  "Summary": {
+    "Endpoint": "loincs",
+    "Query": "glucose",
+    "TotalCount": 145,
+    "Offset": 0,
+    "Rows": 20
+  },
+  "Results": [...]
+}
+```
+
+## 输出详细程度
+
+使用 `--detail` / `-d` 控制结果字段的详细程度：
+
+| 级别 | 说明 |
+|------|------|
+| `brief` | 仅保留核心字段（LOINC_NUM、COMPONENT、SYSTEM 等） |
+| `moderate` | 包含常用扩展字段（SHORTNAME、DisplayName 等） |
+| `full` | 保留 API 返回的全部字段（默认） |
+
+```bash
+python scripts/loinc_search.py search "glucose" -d brief
+python scripts/loinc_search.py parts "System" -d moderate
+```
+
+各端点保留的字段定义见脚本中的 `DETAIL_FIELDS`。
 
 ## 错误处理
 
