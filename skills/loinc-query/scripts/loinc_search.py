@@ -19,6 +19,44 @@ import httpx
 BASE_URL = "https://loinc.regenstrief.org/searchapi"
 EndpointType = Literal["loincs", "parts", "answerlists", "groups"]
 
+DETAIL_FIELDS = {
+    "loincs": {
+        "brief": {
+            "LOINC_NUM", "COMPONENT", "PROPERTY", "TIME_ASPCT", "SYSTEM",
+            "SCALE_TYP", "METHOD_TYP", "LONG_COMMON_NAME", "STATUS", "CLASS",
+        },
+        "moderate": {
+            "LOINC_NUM", "COMPONENT", "PROPERTY", "TIME_ASPCT", "SYSTEM",
+            "SCALE_TYP", "METHOD_TYP", "LONG_COMMON_NAME", "STATUS", "CLASS",
+            "SHORTNAME", "DisplayName", "FORMULA", "EXAMPLE_UNITS",
+            "EXAMPLE_UCUM_UNITS", "DefinitionDescription", "VersionLastChanged",
+            "VersionFirstReleased", "ORDER_OBS", "CLASSTYPE", "Link",
+        },
+    },
+    "parts": {
+        "brief": {"PartNumber", "PartTypeName", "PartName", "Status"},
+        "moderate": {
+            "PartNumber", "PartTypeName", "PartName", "Status",
+            "PartDisplayName", "Classlist", "Link",
+        },
+    },
+    "answerlists": {
+        "brief": {"AnswerListId", "Name", "ExtDefinedYN", "Link"},
+        "moderate": {
+            "AnswerListId", "Name", "ExtDefinedYN", "Link",
+            "Description", "LoincAnswerListOid", "Answers",
+        },
+    },
+    "groups": {
+        "brief": {"GroupId", "Group", "Archetype", "STATUS", "Category", "Link"},
+        "moderate": {
+            "GroupId", "Group", "Archetype", "STATUS", "Category", "Link",
+            "ParentGroupId", "ParentGroup", "VersionFirstReleased",
+            "UsageNotes", "Loincs",
+        },
+    },
+}
+
 
 class LoincApiError(Exception):
     def __init__(self, message: str, status_code: int | None = None) -> None:
@@ -54,6 +92,16 @@ def _load_credentials() -> tuple[str, str]:
         "No credentials found. Set ~/.loincrc (username=..., password=...) or "
         "environment variables LOINC_USERNAME / LOINC_PASSWORD."
     )
+
+def _filter_result_fields(
+    results: list[dict[str, Any]], keep_fields: set[str]
+) -> list[dict[str, Any]]:
+    filtered = []
+    for item in results:
+        new_item = {k: v for k, v in item.items() if k in keep_fields}
+        filtered.append(new_item)
+    return filtered
+
 
 async def _make_request(
     client: httpx.AsyncClient, endpoint: str, params: dict[str, Any]
@@ -153,6 +201,13 @@ def _build_parser() -> argparse.ArgumentParser:
         "--sort",
         help="Sort field and order, e.g. 'loinc_num desc'",
     )
+    parser.add_argument(
+        "--detail",
+        "-d",
+        choices=["brief", "moderate", "full"],
+        default="full",
+        help="Detail level of results: brief, moderate, or full (default: full)",
+    )
     return parser
 
 
@@ -176,10 +231,10 @@ def main() -> int:
             result = _run_async(
                 search(args.query, endpoint="loincs", rows=1, offset=0, sort=args.sort)
             )
-            if not result.get("results"):
+            if not result.get("Results"):
                 _error_json(f"No results found for code '{args.query}'.")
                 return 1
-            print(json.dumps(result, indent=2, ensure_ascii=False))
+            ep = "loincs"
         else:
             ep = endpoint_map[args.command]
             result = _run_async(
@@ -191,7 +246,12 @@ def main() -> int:
                     sort=args.sort,
                 )
             )
-            print(json.dumps(result, indent=2, ensure_ascii=False))
+
+        if args.detail != "full" and "Results" in result:
+            keep = DETAIL_FIELDS[ep][args.detail]
+            result["Results"] = _filter_result_fields(result["Results"], keep)
+
+        print(json.dumps(result, indent=2, ensure_ascii=False))
     except LoincApiError as e:
         _error_json(e.message, e.status_code)
         return 1
