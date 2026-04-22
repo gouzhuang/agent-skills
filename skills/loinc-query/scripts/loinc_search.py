@@ -17,7 +17,6 @@ from typing import Any, Literal
 import httpx
 
 BASE_URL = "https://loinc.regenstrief.org/searchapi"
-ENDPOINTS: tuple[EndpointType, ...] = ("loincs", "parts", "answerlists", "groups")
 EndpointType = Literal["loincs", "parts", "answerlists", "groups"]
 
 
@@ -118,20 +117,6 @@ async def search(
         return await _make_request(client, endpoint, params)
 
 
-async def search_all_endpoints(
-    query: str, rows: int = 20
-) -> dict[str, dict[str, Any]]:
-    tasks = [search(query, ep, rows=rows) for ep in ENDPOINTS]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-    output: dict[str, dict[str, Any]] = {}
-    for ep, result in zip(ENDPOINTS, results):
-        if isinstance(result, BaseException):
-            output[ep] = {"results": [], "error": str(result)}
-        else:
-            output[ep] = result
-    return output
-
-
 def _error_json(message: str, status_code: int | None = None) -> None:
     err: dict[str, Any] = {"error": message}
     if status_code:
@@ -147,7 +132,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "command",
-        choices=["search", "parts", "answers", "groups", "details", "all"],
+        choices=["search", "parts", "answers", "groups", "details"],
         help="Command to execute",
     )
     parser.add_argument(
@@ -187,11 +172,7 @@ def main() -> int:
     }
 
     try:
-        if args.command == "all":
-            results = _run_async(search_all_endpoints(args.query, rows=args.rows))
-            data = {"query": args.query, "endpoints": results}
-            print(json.dumps(data, indent=2, ensure_ascii=False))
-        elif args.command == "details":
+        if args.command == "details":
             result = _run_async(
                 search(args.query, endpoint="loincs", rows=1, offset=0, sort=args.sort)
             )

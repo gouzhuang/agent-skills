@@ -24,9 +24,6 @@ python scripts/loinc_search.py parts 'Ser/Plas PartTypeName:SYSTEM Status:ACTIVE
 # 查看特定代码详情
 python scripts/loinc_search.py details "2339-0"
 
-# 同时搜索所有端点
-python scripts/loinc_search.py all "platelet"
-
 # 限制结果数量
 python scripts/loinc_search.py search "glucose" -n 10
 ```
@@ -49,7 +46,6 @@ python scripts/loinc_search.py search "glucose" -n 10
 | `answers` | `answerlists` | 搜索答案列表 |
 | `groups` | `groups` | 搜索 LOINC 组 |
 | `details` | `loincs` | 查看指定 LOINC 代码详情 |
-| `all` | 全部 | 同时搜索所有端点 |
 
 ## 搜索语法
 
